@@ -99,6 +99,7 @@ static void * const keypath = (void*)&keypath;
 
 - (void)presentPopupView:(UIView*)popupView animationType:(MJPopupViewAnimation)animationType dismissed:(void(^)(void))dismissed
 {
+    [self registerForKeyboardNotifications];
     UIView *sourceView = [self topView];
     sourceView.tag = kMJSourceViewTag;
     popupView.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin |UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleRightMargin;
@@ -372,4 +373,42 @@ static void * const keypath = (void*)&keypath;
     return objc_getAssociatedObject(self, &MJPopupViewDismissedKey);
 }
 
+#pragma mark -
+#pragma mark keyboard management
+// Call this method somewhere in your view controller setup code.
+- (void)registerForKeyboardNotifications
+{
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardWillBeHidden:)
+                                                 name:UIKeyboardWillHideNotification object:nil];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
+}
+
+// Called when the UIKeyboardWillHideNotification is sent
+- (void)keyboardWillBeHidden:(NSNotification*)aNotification
+{
+    [self moveAccordingToKBHeight:0.0f];
+}
+
+- (void)keyboardWillChangeFrame:(NSNotification*)aNotification
+{
+    NSDictionary *info = [aNotification userInfo];
+    [self moveAccordingToKBHeight:[[info objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue].size.height];
+}
+
+- (void)moveAccordingToKBHeight:(CGFloat)newKBHeight {
+    [UIView animateWithDuration:0.3f animations:^{
+        CGRect frame = self.mj_popupViewController.view.frame;
+        CGRect screenRect = [[UIScreen mainScreen] bounds];
+        CGFloat screenHeight = screenRect.size.height;
+        frame.origin.y = (screenHeight - newKBHeight - frame.size.height)/2;
+        [self.mj_popupViewController.view setFrame:frame];
+    }];
+}
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+    [self.view endEditing:YES];
+}
 @end
